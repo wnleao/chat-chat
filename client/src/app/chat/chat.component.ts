@@ -27,15 +27,15 @@ export class ChatComponent implements OnInit {
 
   @ViewChild("messagesBox") messagesBox: ElementRef;
 
-  constructor(private socketService: SocketService) { 
-    this.user = new User("John"); 
+  constructor(private socketService: SocketService) {
+    this.user = new User("John");
   }
 
   ngOnInit(): void {
     this.initIoConnection();
   }
 
-  ngAfterViewChecked(): void {    
+  ngAfterViewChecked(): void {
     if (this.messages.length - this.oldMessagesLength > 0 && this.isScrolledToBottom) {
       let el = this.messagesBox.nativeElement;
       el.scrollTop = el.scrollHeight - el.clientHeight;
@@ -47,7 +47,7 @@ export class ChatComponent implements OnInit {
   // https://stackoverflow.com/questions/18614301/keep-overflow-div-scrolled-to-bottom-unless-user-scrolls-up
   onScroll(element) {
     this.isScrolledToBottom = this.checkScrolledToBottom();
-    if(this.isScrolledToBottom) {
+    if (this.isScrolledToBottom) {
       this.oldMessagesLength = this.messages.length;
     }
   }
@@ -68,13 +68,24 @@ export class ChatComponent implements OnInit {
         this.sendNotification(Action.JOINED);
         console.log('connected');
       });
-      
+
     this.socketService.onEvent(Event.DISCONNECT)
       .subscribe(() => {
         this.sendNotification(Action.LEFT);
         console.log('disconnected');
       });
 
+    this.socketService.onEvent(Event.TYPING)
+      .subscribe(() => {
+        console.log('user is typing...');
+        this.statusBarMessage = "<i>User is typing...</i>";
+      });
+
+    this.socketService.onEvent(Event.RESET_TYPING)
+      .subscribe(() => {
+        console.log('user is not typing anymore...');
+        this.statusBarMessage = "";
+      });
   }
 
   handleMessage(message: Message) {
@@ -89,12 +100,32 @@ export class ChatComponent implements OnInit {
     this.textarea.setValue("");
   }
 
+  onTyping() {
+    let content = this.textarea.value;
+    console.log(content);
+
+    if (content && content.trim() !== "" && !this.isUserTyping) {
+      console.log("typing!");
+      this.socketService.typing();
+      this.isUserTyping = true;
+    }
+
+    if (content.trim() === "" && this.isUserTyping) {
+      this.socketService.resetTyping();
+      console.log("not typing anymore...");
+      this.isUserTyping = false;
+    }
+  }
+
   public sendMessage(content: string): void {
     if (!content) {
       return;
     }
 
-    let message = new Message(this.user, content);
+    let message: Message = {
+      from: this.user,
+      content: content
+    };
     this.handleMessage(message);
 
     console.log("message sent...");
@@ -109,7 +140,7 @@ export class ChatComponent implements OnInit {
       content: `${this.user['name']} ${action} the conversation`,
       action: action
     }
-    
+
     this.socketService.send(message);
   }
 }

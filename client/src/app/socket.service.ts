@@ -16,29 +16,40 @@ export enum Action {
 export enum Event {
   CONNECT = 'connect',
   DISCONNECT = 'disconnect',
+  TYPING = 'typing',
+  RESET_TYPING = 'reset_typing'
 }
 
 @Injectable()
 export class SocketService {
-    private socket;
+  private socket;
 
-    public initSocket(): void {
-        this.socket = socketIo(SERVER_URL);
-    }
+  public initSocket(): void {
+    this.socket = socketIo(SERVER_URL);
+  }
 
-    public send(message: Message): void {
-        this.socket.emit('message', message);
-    }
+  public send(message: Message): void {
+    this.socket.emit('message', message);
+  }
 
-    public onMessage(): Observable<Message> {
-        return new Observable<Message>(observer => {
-            this.socket.on('message', (data: Message) => observer.next(data));
-        });
-    }
+  public typing(): void {
+    this.socket.emit(Event.TYPING);
+  }
 
-    public onEvent(event: Event): Observable<any> {
-        return new Observable<Event>(observer => {
-            this.socket.on(event, () => observer.next());
-        });
-    }
+
+  public resetTyping(): void {
+    this.socket.emit(Event.RESET_TYPING);
+  }
+
+  public onMessage(): Observable<Message> {
+    return new Observable<Message>(observer => {
+      this.socket.on('message', (data: Message) => observer.next(data));
+    });
+  }
+
+  public onEvent(event: Event): Observable<any> {
+    return new Observable<Event>(observer => {
+      this.socket.on(event, () => observer.next());
+    });
+  }
 }
