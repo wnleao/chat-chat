@@ -4,7 +4,9 @@
   </div>
   <div #messagesBox (scroll)="onScroll(messagesBox)" style="flex: 1; border: 1px solid black; display: flex; flex-direction: column; overflow-y: scroll;">
     <div style="flex: 1;"></div>
-    <div  style="flex: 0; padding: 10px;" *ngFor="let message of messages">{{ message.content }}</div>
+    <div  style="flex: 0; padding: 10px;" *ngFor="let message of messages">
+      [{{ message.from.name }}] {{ message.content }}
+    </div>
   </div>
   <div style="flex: 0; border: 1px solid red; height: 80px;">
     <textarea style="resize:none; width: 100%; height: 100%; margin: 0px; box-sizing: border-box; padding: 5px" [formControl]="textarea" (keyup)="onTyping()" (keydown.enter)="onSendMessage()"></textarea>
