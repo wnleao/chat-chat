@@ -1,9 +1,10 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
 
 import { Message } from '../common/message';
 import { User } from '../common/user';
 import { Action, Event, SocketService } from '../socket.service';
 import { FormControl } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'tcc-chat',
@@ -12,6 +13,7 @@ import { FormControl } from '@angular/forms';
 })
 export class ChatComponent implements OnInit {
   action = Action;
+  @Input()
   user: User;
   messages: Message[] = [];
   messageContent: string;
@@ -24,14 +26,21 @@ export class ChatComponent implements OnInit {
   oldMessagesLength = 0;
 
   statusBarMessage = "";
-
+  
   @ViewChild("messagesBox") messagesBox: ElementRef;
 
-  constructor(private socketService: SocketService) {
-    this.user = new User("John");
+  constructor(
+    private socketService: SocketService,
+    private router: Router
+  ) {
   }
 
   ngOnInit(): void {
+    let username = sessionStorage.getItem("USERNAME");
+    if (!username) {
+      this.router.navigate(['/']);
+    }
+    this.user = new User(username);
     this.initIoConnection();
   }
 

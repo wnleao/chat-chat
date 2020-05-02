@@ -6,15 +6,19 @@ import { AppComponent } from './app.component';
 import { ChatComponent } from './chat/chat.component';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { SocketService } from './socket.service';
+import { LoginComponent } from './login/login.component';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 @NgModule({
   declarations: [
     AppComponent,
-    ChatComponent
+    ChatComponent,
+    LoginComponent
   ],
   imports: [
     BrowserModule,
     ReactiveFormsModule,
+    NgbModule,
     HttpClientModule,
     AppRoutingModule,
   ],
