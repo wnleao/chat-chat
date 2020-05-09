@@ -1,4 +1,20 @@
-# References
+## Quick firebase setup
+
+First of all, make sure you've built your project using the production configuration.
+
+```console
+ng build --prod
+```
+
+That way, `src/environments/environment.ts` is overwritten by `src/environments/environment.prod.ts` and the `SERVER_URL`, and other entries, will be correct for out deployment in production.
+
+Then run the firebase command,
+
+```console
+firebase deploy
+```
+
+### References
 
 https://medium.com/dailyjs/real-time-apps-with-typescript-integrating-web-sockets-node-angular-e2b57cbd1ec1
 

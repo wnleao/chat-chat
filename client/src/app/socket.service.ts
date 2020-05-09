@@ -4,7 +4,7 @@ import { Message } from './common/message';
 import * as socketIo from 'socket.io-client';
 import { Observable } from 'rxjs';
 
-const SERVER_URL = 'http://localhost:8080';
+import { environment } from '../environments/environment';
 
 // Actions you can take on the App
 export enum Action {
@@ -25,7 +25,7 @@ export class SocketService {
   private socket;
 
   public initSocket(): void {
-    this.socket = socketIo(SERVER_URL);
+    this.socket = socketIo(environment.SERVER_URL);
   }
 
   public send(message: Message): void {
