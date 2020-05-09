@@ -1,9 +1,0 @@
-{
-  "files": [
-    "src/*.ts",
-    "src/common/*.ts",
-  ],
-  "compilerOptions": {
-    "target": "es5"
-  }
-}
