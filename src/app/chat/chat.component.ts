@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
 
 import { Message } from '../common/message';
 import { User } from '../common/user';
-import { Action, Event, SocketService } from '../socket.service';
+import { Event, SocketService } from '../socket.service';
 import { FormControl } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -12,7 +12,6 @@ import { Router } from '@angular/router';
   styleUrls: ['./chat.component.scss']
 })
 export class ChatComponent implements OnInit {
-  action = Action;
   @Input()
   user: User;
   messages: Message[] = [];
@@ -74,14 +73,25 @@ export class ChatComponent implements OnInit {
 
     this.socketService.onEvent(Event.CONNECT)
       .subscribe(() => {
-        this.sendNotification(Action.JOINED);
-        console.log('connected');
+        this.socketService.emitUserJoined(this.user);
       });
 
-    this.socketService.onEvent(Event.DISCONNECT)
-      .subscribe(() => {
-        this.sendNotification(Action.LEFT);
-        console.log('disconnected');
+    this.socketService.onUserJoined()
+      .subscribe((user: User) => {
+        let m: Message = {
+          from: user,
+          content: `joined the conversation` 
+        };
+        this.handleMessage(m);
+      });
+
+    this.socketService.onUserLeft()
+      .subscribe((user: User) => {
+        let m: Message = {
+          from: user,
+          content: `left the conversation` 
+        };
+        this.handleMessage(m);
       });
 
     this.socketService.onEvent(Event.TYPING)
@@ -142,14 +152,4 @@ export class ChatComponent implements OnInit {
     this.messageContent = null;
   }
 
-  public sendNotification(action: Action): void {
-    console.log("user = " + this.user.name);
-    let message = {
-      from: this.user,
-      content: `${this.user['name']} ${action} the conversation`,
-      action: action
-    }
-
-    this.socketService.send(message);
-  }
 }

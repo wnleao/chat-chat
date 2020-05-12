@@ -5,19 +5,17 @@ import * as socketIo from 'socket.io-client';
 import { Observable } from 'rxjs';
 
 import { environment } from '../environments/environment';
-
-// Actions you can take on the App
-export enum Action {
-  JOINED = 'joined',
-  LEFT = 'left',
-}
+import { User } from './common/user';
 
 // Socket.io events
 export enum Event {
   CONNECT = 'connect',
   DISCONNECT = 'disconnect',
+  MESSAGE = 'message',
   TYPING = 'typing',
-  RESET_TYPING = 'reset_typing'
+  RESET_TYPING = 'reset_typing',
+  USER_JOINED = 'user_joined',
+  USER_LEFT = 'user_left',
 }
 
 @Injectable()
@@ -29,21 +27,36 @@ export class SocketService {
   }
 
   public send(message: Message): void {
-    this.socket.emit('message', message);
+    this.socket.emit(Event.MESSAGE, message);
   }
 
   public typing(): void {
     this.socket.emit(Event.TYPING);
   }
 
+  public emitUserJoined(user: User): void {
+    this.socket.emit(Event.USER_JOINED, user);
+  }
 
   public resetTyping(): void {
     this.socket.emit(Event.RESET_TYPING);
   }
 
+  public onUserJoined(): Observable<User> {
+    return new Observable<User>(observer => {
+      this.socket.on(Event.USER_JOINED, (user: User) => observer.next(user));
+    });
+  }
+
+  public onUserLeft(): Observable<User> {
+    return new Observable<User>(observer => {
+      this.socket.on(Event.USER_LEFT, (user: User) => observer.next(user));
+    });
+  }
+
   public onMessage(): Observable<Message> {
     return new Observable<Message>(observer => {
-      this.socket.on('message', (data: Message) => observer.next(data));
+      this.socket.on(Event.MESSAGE, (data: Message) => observer.next(data));
     });
   }
 
