@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 export class ChatComponent implements OnInit {
   @Input()
   user: User;
+  userCount: number;
   messages: Message[] = [];
   messageContent: string;
   ioConnection: any;
@@ -72,9 +73,7 @@ export class ChatComponent implements OnInit {
       .subscribe((message: Message) => this.handleMessage(message));
 
     this.socketService.onEvent(Event.CONNECT)
-      .subscribe(() => {
-        this.socketService.emitUserJoined(this.user);
-      });
+      .subscribe(() => this.socketService.emitUserJoined(this.user));
 
     this.socketService.onUserJoined()
       .subscribe((user: User) => {
@@ -84,6 +83,9 @@ export class ChatComponent implements OnInit {
         };
         this.handleMessage(m);
       });
+
+    this.socketService.onUserCount()
+      .subscribe(userCount => this.userCount = userCount);
 
     this.socketService.onUserLeft()
       .subscribe((user: User) => {

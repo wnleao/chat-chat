@@ -16,6 +16,7 @@ export enum Event {
   RESET_TYPING = 'reset_typing',
   USER_JOINED = 'user_joined',
   USER_LEFT = 'user_left',
+  USER_COUNT = 'user_count',
 }
 
 @Injectable()
@@ -42,15 +43,21 @@ export class SocketService {
     this.socket.emit(Event.RESET_TYPING);
   }
 
-  public onUserJoined(): Observable<User> {
-    return new Observable<User>(observer => {
-      this.socket.on(Event.USER_JOINED, (user: User) => observer.next(user));
+  public onUserJoined(): Observable<any> {
+    return new Observable<any>(observer => {
+      this.socket.on(Event.USER_JOINED, (payload) => observer.next(payload));
     });
   }
 
-  public onUserLeft(): Observable<User> {
-    return new Observable<User>(observer => {
-      this.socket.on(Event.USER_LEFT, (user: User) => observer.next(user));
+  public onUserLeft(): Observable<any> {
+    return new Observable<any>(observer => {
+      this.socket.on(Event.USER_LEFT, (payload) => observer.next(payload));
+    });
+  }
+
+  public onUserCount(): Observable<number> {
+    return new Observable<number>(observer => {
+      this.socket.on(Event.USER_COUNT, (payload) => observer.next(payload));
     });
   }
 
