@@ -35,6 +35,10 @@ export class SocketService {
     this.socket.emit(Event.TYPING);
   }
 
+  public changeUserName(username: string): void {
+    this.socket.emit('change_username', username);
+  }
+
   public emitUserJoined(user: User): void {
     this.socket.emit(Event.USER_JOINED, user);
   }

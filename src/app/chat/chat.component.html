@@ -1,6 +1,7 @@
 <div style="height: 100%; display: flex; flex-direction: column;">
   <div style="flex: 0; border: 1px solid green; min-height: 30px; padding: 2px;">
-    <span>Hello, {{ user?.name }}! {{ userCount }} {{ userCount > 1 ? "users" : "user" }} online.</span>
+    <div>Hello, <my-smart-username [username]="user.name" (usernameChange)="changeUsername($event)"></my-smart-username>!
+        {{ userCount }} {{ userCount > 1 ? "users" : "user" }} online.</div>
   </div>
   <div #messagesBox (scroll)="onScroll(messagesBox)" style="flex: 1; border: 1px solid black; display: flex; flex-direction: column; overflow-y: scroll;">
     <div style="flex: 1;"></div>

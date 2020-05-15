@@ -66,6 +66,13 @@ export class ChatComponent implements OnInit {
     return el.scrollHeight - el.clientHeight <= el.scrollTop + 1;
   }
 
+  changeUsername(newName) {
+    if (newName && this.user.name != newName) {
+      this.user.name = newName;
+      this.socketService.changeUserName(newName);
+    }
+  }
+  
   private initIoConnection(): void {
     this.socketService.initSocket();
 
