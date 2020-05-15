@@ -1,21 +1,37 @@
-<div style="height: 100%; display: flex; flex-direction: column;">
-  <div style="flex: 0; border: 1px solid green; min-height: 30px; padding: 2px;">
-    <div>Hello, <my-smart-username [username]="user.name" (usernameChange)="changeUsername($event)"></my-smart-username>!
-        {{ userCount }} {{ userCount > 1 ? "users" : "user" }} online.</div>
+<div style="height: 100%; display: flex">
+  <!-- https://mastery.games/post/the-difference-between-width-and-flex-basis/ -->
+  <div style="flex: 0 0 280px; border: 1px solid blue;">
+    <div style="border: 1px solid green; min-height: 50px;">
+      <div (click)="enterMainRoom()">
+        Main room
+      </div>
+      <div>
+        {{ userCount }} {{ userCount > 1 ? "users" : "user" }} online
+      </div>
+    </div>
+    <!-- list of online users -->
+    <div *ngFor="let uo of usersOnline | keyvalue" (click)="enterPrivateRoom(uo.key)">{{ uo.value.name }}</div>
   </div>
-  <div #messagesBox (scroll)="onScroll(messagesBox)" style="flex: 1; border: 1px solid black; display: flex; flex-direction: column; overflow-y: scroll;">
-    <div style="flex: 1;"></div>
-    <div  style="flex: 0; padding: 10px;" *ngFor="let message of messages">
-      [{{ message.from.name }}] {{ message.content }}
+  <div style="flex: 1; height: 100%; display: flex; flex-direction: column;">
+    <!-- message box -->
+    <div style="flex: 0; min-height: 50px; padding: 2px;">
+      <div>Hello, <my-smart-username [username]="user.name" (usernameChange)="changeUsername($event)">
+        </my-smart-username>
+      </div>
+    </div>
+    <div #messagesBox (scroll)="onScroll(messagesBox)"
+      style="flex: 1; border: 1px solid black; display: flex; flex-direction: column; overflow-y: scroll;">
+      <div style="flex: 1;"></div>
+      <div style="flex: 0; padding: 10px;" *ngFor="let message of messages">
+        [{{ message.from.name }}] {{ message.content }}
+      </div>
+    </div>
+    <div style="flex: 0; border: 1px solid red; height: 80px;">
+      <textarea style="resize:none; width: 100%; height: 100%; margin: 0px; box-sizing: border-box; padding: 5px"
+        [formControl]="textarea" (keyup)="onTyping()" (keydown.enter)="onSendMessage()"></textarea>
+    </div>
+    <div style="flex: 0; min-height: 30px; padding: 2px;">
+      <span [innerHtml]="statusBarMessage"></span>
     </div>
   </div>
-  <div style="flex: 0; border: 1px solid red; height: 80px;">
-    <textarea style="resize:none; width: 100%; height: 100%; margin: 0px; box-sizing: border-box; padding: 5px" [formControl]="textarea" (keyup)="onTyping()" (keydown.enter)="onSendMessage()"></textarea>
-  </div>
-  <div style="flex: 0; border: 1px solid green; min-height: 30px; padding: 2px;">
-    <span [innerHtml]="statusBarMessage"></span>
-  </div>
 </div>
-
-
-

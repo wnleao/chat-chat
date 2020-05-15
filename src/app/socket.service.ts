@@ -16,7 +16,8 @@ export enum Event {
   RESET_TYPING = 'reset_typing',
   USER_JOINED = 'user_joined',
   USER_LEFT = 'user_left',
-  USER_COUNT = 'user_count',
+  USERS_ONLINE = 'users_online',
+  CHANGE_USERNAME = 'change_username',
 }
 
 @Injectable()
@@ -25,6 +26,10 @@ export class SocketService {
 
   public initSocket(): void {
     this.socket = socketIo(environment.SERVER_URL);
+  }
+
+  public get socketId() {
+    return this.socket.id;
   }
 
   public send(message: Message): void {
@@ -36,7 +41,7 @@ export class SocketService {
   }
 
   public changeUserName(username: string): void {
-    this.socket.emit('change_username', username);
+    this.socket.emit(Event.CHANGE_USERNAME, username);
   }
 
   public emitUserJoined(user: User): void {
@@ -59,9 +64,9 @@ export class SocketService {
     });
   }
 
-  public onUserCount(): Observable<number> {
-    return new Observable<number>(observer => {
-      this.socket.on(Event.USER_COUNT, (payload) => observer.next(payload));
+  public onUsersOnline(): Observable<any> {
+    return new Observable<any>(observer => {
+      this.socket.on(Event.USERS_ONLINE, (payload) => observer.next(payload));
     });
   }
 

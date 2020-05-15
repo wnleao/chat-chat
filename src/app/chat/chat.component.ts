@@ -26,6 +26,8 @@ export class ChatComponent implements OnInit {
   oldMessagesLength = 0;
 
   statusBarMessage = "";
+
+  usersOnline = {}
   
   @ViewChild("messagesBox") messagesBox: ElementRef;
 
@@ -72,6 +74,14 @@ export class ChatComponent implements OnInit {
       this.socketService.changeUserName(newName);
     }
   }
+
+  enterMainRoom() {
+    console.log("enter main room")
+  }
+
+  enterPrivateRoom(socketId) {
+    console.log("enterPrivateRoom = " + socketId);
+  }
   
   private initIoConnection(): void {
     this.socketService.initSocket();
@@ -91,8 +101,13 @@ export class ChatComponent implements OnInit {
         this.handleMessage(m);
       });
 
-    this.socketService.onUserCount()
-      .subscribe(userCount => this.userCount = userCount);
+    this.socketService.onUsersOnline()
+      .subscribe(usersOnline => {
+        this.userCount = Object.keys(usersOnline).length;
+        // remove myself from the users online map
+        delete usersOnline[this.socketService.socketId];
+        this.usersOnline = usersOnline;
+      });
 
     this.socketService.onUserLeft()
       .subscribe((user: User) => {
