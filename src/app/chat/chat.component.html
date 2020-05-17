@@ -1,8 +1,8 @@
 <div style="height: 100%; display: flex">
   <!-- https://mastery.games/post/the-difference-between-width-and-flex-basis/ -->
   <div style="flex: 0 0 280px; border: 1px solid blue;">
-    <div style="border: 1px solid green; min-height: 50px;">
-      <div (click)="enterMainRoom()">
+    <div style="border: 1px solid green; min-height: 50px;" (click)="enterMainRoom()">
+      <div>
         Main room
       </div>
       <div>
@@ -10,20 +10,24 @@
       </div>
     </div>
     <!-- list of online users -->
-    <div *ngFor="let uo of usersOnline | keyvalue" (click)="enterPrivateRoom(uo.key)">{{ uo.value.name }}</div>
+    <div *ngFor="let uo of usersOnline | keyvalue"
+      style="border: 1px solid purple"
+      (click)="enterRoom(uo.key)">{{ uo.value.name }}</div>
   </div>
   <div style="flex: 1; height: 100%; display: flex; flex-direction: column;">
     <!-- message box -->
-    <div style="flex: 0; min-height: 50px; padding: 2px;">
-      <div>Hello, <my-smart-username [username]="user.name" (usernameChange)="changeUsername($event)">
+    <div style="flex: 0; min-height: 50px; display: flex; flex-direction: row-reverse">
+      <div style="flex: 0 0 100px; text-align: right; border: 1px solid pink">
+        <my-smart-username [username]="user.name" (usernameChange)="changeUsername($event)">
         </my-smart-username>
       </div>
+      <div style="flex: 1">{{ getRoomName() }}</div>
     </div>
     <div #messagesBox (scroll)="onScroll(messagesBox)"
       style="flex: 1; border: 1px solid black; display: flex; flex-direction: column; overflow-y: scroll;">
       <div style="flex: 1;"></div>
       <div style="flex: 0; padding: 10px;" *ngFor="let message of messages">
-        [{{ message.from.name }}] {{ message.content }}
+        [{{ message.user.name }}] {{ message.content }}
       </div>
     </div>
     <div style="flex: 0; border: 1px solid red; height: 80px;">

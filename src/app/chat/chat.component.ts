@@ -6,6 +6,9 @@ import { Event, SocketService } from '../socket.service';
 import { FormControl } from '@angular/forms';
 import { Router } from '@angular/router';
 
+// Default public room. All users will join and listen to messages sent to it. 
+const MAIN_ROOM = "main-room";
+
 @Component({
   selector: 'tcc-chat',
   templateUrl: './chat.component.html',
@@ -16,8 +19,13 @@ export class ChatComponent implements OnInit {
   user: User;
   userCount: number;
   messages: Message[] = [];
-  messageContent: string;
   ioConnection: any;
+
+  // In socket.io, each socket automatically joins a room identified by its own id.
+  // Thus, we'll keep track of the socketIds and store the messages associated with them.
+  // socketId => Message[]
+  currentRoom: string;
+  rooms = new Map();
 
   textarea = new FormControl();
 
@@ -25,10 +33,10 @@ export class ChatComponent implements OnInit {
   isScrolledToBottom = true;
   oldMessagesLength = 0;
 
-  statusBarMessage = "";
+  statusBarMessageMap = new Map();
 
-  usersOnline = {}
-  
+  usersOnline = {};
+
   @ViewChild("messagesBox") messagesBox: ElementRef;
 
   constructor(
@@ -42,12 +50,17 @@ export class ChatComponent implements OnInit {
     if (!username) {
       this.router.navigate(['/']);
     }
+
+    this.rooms.clear();
+    this.rooms.set(MAIN_ROOM, []);
+    this.enterMainRoom();
+
     this.user = new User(username);
     this.initIoConnection();
   }
 
   ngAfterViewChecked(): void {
-    if (this.messages.length - this.oldMessagesLength > 0 && this.isScrolledToBottom) {
+    if (this.messages && this.messages.length - this.oldMessagesLength > 0 && this.isScrolledToBottom) {
       let el = this.messagesBox.nativeElement;
       el.scrollTop = el.scrollHeight - el.clientHeight;
       this.oldMessagesLength = this.messages.length;
@@ -75,14 +88,37 @@ export class ChatComponent implements OnInit {
     }
   }
 
-  enterMainRoom() {
-    console.log("enter main room")
+  get statusBarMessage() {
+   return [...this.statusBarMessageMap.values()].join(' '); 
   }
 
-  enterPrivateRoom(socketId) {
-    console.log("enterPrivateRoom = " + socketId);
+  resetStatusBar() {
+    this.statusBarMessageMap = new Map();
   }
-  
+
+  enterRoom(room: string) {
+    if (this.currentRoom === room) {
+      return;
+    }
+
+    console.log(`enter room ${room}`)
+    this.currentRoom = room;
+    this.messages = this.rooms.get(this.currentRoom);
+
+    this.resetStatusBar();
+  }
+
+  enterMainRoom() {
+    this.enterRoom(MAIN_ROOM);
+  }
+
+  getRoomName() {
+    if (this.currentRoom === MAIN_ROOM) {
+      return "Main room";
+    }
+    return this.usersOnline[this.currentRoom].name;
+  }
+
   private initIoConnection(): void {
     this.socketService.initSocket();
 
@@ -93,13 +129,29 @@ export class ChatComponent implements OnInit {
       .subscribe(() => this.socketService.emitUserJoined(this.user));
 
     this.socketService.onUserJoined()
-      .subscribe((user: User) => {
+      .subscribe(userJoined => {
         let m: Message = {
-          from: user,
-          content: `joined the conversation` 
+          user: userJoined.user,
+          sender: null,
+          recipient: MAIN_ROOM,
+          content: "joined the conversation",
         };
         this.handleMessage(m);
       });
+
+    this.socketService.onUserLeft()
+      .subscribe(userLeft => {
+        let m: Message = {
+          user: userLeft.user,
+          sender: null,
+          recipient: MAIN_ROOM,
+          content: "left the conversation",
+        };
+        this.handleMessage(m);
+        // remove room clean up messages
+        this.rooms.delete(userLeft.socketId);
+      });
+
 
     this.socketService.onUsersOnline()
       .subscribe(usersOnline => {
@@ -107,35 +159,54 @@ export class ChatComponent implements OnInit {
         // remove myself from the users online map
         delete usersOnline[this.socketService.socketId];
         this.usersOnline = usersOnline;
+
+        for (let [socketId, user] of Object.entries(this.usersOnline)) {
+          if (!this.rooms.has(socketId)) {
+            this.rooms.set(socketId, []);
+          }
+        }
       });
 
-    this.socketService.onUserLeft()
-      .subscribe((user: User) => {
-        let m: Message = {
-          from: user,
-          content: `left the conversation` 
-        };
-        this.handleMessage(m);
+    this.socketService.onUserTyping()
+      .subscribe(data => {
+        if(data.room === this.currentRoom || data.sender === this.currentRoom) {
+          let name = this.usersOnline[data.sender].name;
+          this.statusBarMessageMap.set(data.sender, `<i>${name} is typing...</i>`);
+        }
       });
 
-    this.socketService.onEvent(Event.TYPING)
-      .subscribe(() => {
-        console.log('user is typing...');
-        this.statusBarMessage = "<i>User is typing...</i>";
-      });
-
-    this.socketService.onEvent(Event.RESET_TYPING)
-      .subscribe(() => {
-        console.log('user is not typing anymore...');
-        this.statusBarMessage = "";
+      
+    this.socketService.onUserResetTyping()
+      .subscribe(data => {
+        if(data.room === this.currentRoom || data.sender === this.currentRoom) {
+          this.statusBarMessageMap.delete(data.sender);
+        }
       });
   }
 
   handleMessage(message: Message) {
-    console.log(message);
-    this.isScrolledToBottom = this.checkScrolledToBottom();
-    this.oldMessagesLength = this.messages.length;
-    this.messages.push(message);
+    let room = this.currentRoom;
+    if (message.sender !== this.socketService.socketId) {
+      room = message.recipient;
+      if(room !== MAIN_ROOM) {
+        room = message.sender;
+      }
+    }
+    
+    let messages = this.rooms.get(room);
+    if (!messages) {
+      console.warn("could not handle room = " + room);
+      console.warn("ignoring message = ");
+      console.log(message);
+      return;
+    }
+
+    if (room === this.currentRoom) {
+      this.isScrolledToBottom = this.checkScrolledToBottom();
+      this.oldMessagesLength = this.messages.length;
+    }
+
+    messages.push(message);
   }
 
   onSendMessage() {
@@ -143,20 +214,27 @@ export class ChatComponent implements OnInit {
     this.textarea.setValue("");
   }
 
+  typing() {
+    console.log("typing!");
+    this.socketService.typing(this.currentRoom);
+    this.isUserTyping = true;
+  }
+
+  resetTyping() {
+    console.log("not typing anymore...");
+    this.socketService.resetTyping(this.currentRoom);
+    this.isUserTyping = false;
+  }
+
   onTyping() {
     let content = this.textarea.value;
-    console.log(content);
 
     if (content && content.trim() !== "" && !this.isUserTyping) {
-      console.log("typing!");
-      this.socketService.typing();
-      this.isUserTyping = true;
+      this.typing();
     }
 
-    if (content.trim() === "" && this.isUserTyping) {
-      this.socketService.resetTyping();
-      console.log("not typing anymore...");
-      this.isUserTyping = false;
+    if ((!content || content.trim() === "") && this.isUserTyping) {
+      this.resetTyping();
     }
   }
 
@@ -166,14 +244,16 @@ export class ChatComponent implements OnInit {
     }
 
     let message: Message = {
-      from: this.user,
-      content: content
+      user: this.user,
+      sender: this.socketService.socketId,
+      recipient: this.currentRoom,
+      content: content,      
     };
     this.handleMessage(message);
 
-    console.log("message sent...");
     this.socketService.send(message);
-    this.messageContent = null;
+
+    this.resetTyping();
   }
 
 }

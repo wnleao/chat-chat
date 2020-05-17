@@ -36,8 +36,16 @@ export class SocketService {
     this.socket.emit(Event.MESSAGE, message);
   }
 
-  public typing(): void {
-    this.socket.emit(Event.TYPING);
+  public typing(room: string): void {
+    this.handleTyping(Event.TYPING, room);
+  }
+
+  public resetTyping(room: string): void {
+    this.handleTyping(Event.RESET_TYPING, room);
+  }
+
+  private handleTyping(event: Event, room: string) {
+    this.socket.emit(event, {sender: this.socketId, room: room});
   }
 
   public changeUserName(username: string): void {
@@ -46,10 +54,6 @@ export class SocketService {
 
   public emitUserJoined(user: User): void {
     this.socket.emit(Event.USER_JOINED, user);
-  }
-
-  public resetTyping(): void {
-    this.socket.emit(Event.RESET_TYPING);
   }
 
   public onUserJoined(): Observable<any> {
@@ -73,6 +77,18 @@ export class SocketService {
   public onMessage(): Observable<Message> {
     return new Observable<Message>(observer => {
       this.socket.on(Event.MESSAGE, (data: Message) => observer.next(data));
+    });
+  }
+
+  public onUserTyping(): Observable<any> {
+    return new Observable<any>(observer => {
+      this.socket.on(Event.TYPING, (data) => observer.next(data));
+    });
+  }
+
+  public onUserResetTyping(): Observable<any> {
+    return new Observable<any>(observer => {
+      this.socket.on(Event.RESET_TYPING, (data) => observer.next(data)); 
     });
   }
 
