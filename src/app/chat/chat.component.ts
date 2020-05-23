@@ -88,7 +88,7 @@ export class ChatComponent implements OnInit {
   }
 
   get statusBarMessage() {
-   return [...this.statusBarMessageMap.values()].join(' '); 
+    return [...this.statusBarMessageMap.values()].join(' ');
   }
 
   resetStatusBar() {
@@ -132,7 +132,8 @@ export class ChatComponent implements OnInit {
         let m: Message = {
           user: userJoined.user,
           sender: null,
-          recipient: MAIN_ROOM,
+          recipient: null,
+          room: MAIN_ROOM,
           content: "joined the conversation",
         };
         this.handleMessage(m);
@@ -143,7 +144,8 @@ export class ChatComponent implements OnInit {
         let m: Message = {
           user: userLeft.user,
           sender: null,
-          recipient: MAIN_ROOM,
+          recipient: null,
+          room: MAIN_ROOM,
           content: "left the conversation",
         };
         this.handleMessage(m);
@@ -167,7 +169,7 @@ export class ChatComponent implements OnInit {
 
     this.socketService.onTyping()
       .subscribe(data => {
-        if(data.room === this.currentRoom || data.sender === this.currentRoom) {
+        if (data.room === this.currentRoom || data.sender === this.currentRoom) {
           let name = this.usersOnline[data.sender].name;
           this.statusBarMessageMap.set(data.sender, `<i>${name} is typing...</i>`);
         }
@@ -175,21 +177,14 @@ export class ChatComponent implements OnInit {
 
     this.socketService.onResetTyping()
       .subscribe(data => {
-        if(data.room === this.currentRoom || data.sender === this.currentRoom) {
+        if (data.room === this.currentRoom || data.sender === this.currentRoom) {
           this.statusBarMessageMap.delete(data.sender);
         }
       });
   }
 
   handleMessage(message: Message) {
-    let room = this.currentRoom;
-    if (message.sender !== this.socketService.socketId) {
-      room = message.recipient;
-      if(room !== MAIN_ROOM) {
-        room = message.sender;
-      }
-    }
-    
+    let room = message.room;
     let messages = this.rooms.get(room);
     if (!messages) {
       console.warn("could not handle room = " + room);
@@ -240,15 +235,25 @@ export class ChatComponent implements OnInit {
       return;
     }
 
+    let room = this.currentRoom; 
+    if (room !== MAIN_ROOM) {
+      // this is a private message and should be stored
+      // in the sender's own room
+      room = this.socketService.socketId;
+    }
+
     let message: Message = {
       user: this.user,
       sender: this.socketService.socketId,
       recipient: this.currentRoom,
-      content: content,      
+      room: room,
+      content: content,
     };
-    this.handleMessage(message);
 
     this.socketService.send(message);
+
+    // pushing my own message in current room
+    this.messages.push(message);
 
     this.resetTyping();
   }
