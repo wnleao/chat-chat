@@ -22,6 +22,7 @@ export enum Event {
 
 @Injectable()
 export class SocketService {
+  
   private socket;
 
   public initSocket(): void {
@@ -56,45 +57,37 @@ export class SocketService {
     this.socket.emit(Event.USER_JOINED, user);
   }
 
+  public onConnect(): Observable<any> {
+    return this.onEvent(Event.CONNECT);
+  }
+  
+  public onMessage(): Observable<Message> {
+    return this.onEvent<Message>(Event.MESSAGE);
+  }
+  
   public onUserJoined(): Observable<any> {
-    return new Observable<any>(observer => {
-      this.socket.on(Event.USER_JOINED, (payload) => observer.next(payload));
-    });
+    return this.onEvent<any>(Event.USER_JOINED);
   }
 
   public onUserLeft(): Observable<any> {
-    return new Observable<any>(observer => {
-      this.socket.on(Event.USER_LEFT, (payload) => observer.next(payload));
-    });
+    return this.onEvent<any>(Event.USER_LEFT);
   }
 
   public onUsersOnline(): Observable<any> {
-    return new Observable<any>(observer => {
-      this.socket.on(Event.USERS_ONLINE, (payload) => observer.next(payload));
-    });
+    return this.onEvent<any>(Event.USERS_ONLINE);
   }
 
-  public onMessage(): Observable<Message> {
-    return new Observable<Message>(observer => {
-      this.socket.on(Event.MESSAGE, (data: Message) => observer.next(data));
-    });
+  public onTyping(): Observable<any> {
+    return this.onEvent<any>(Event.TYPING)
   }
 
-  public onUserTyping(): Observable<any> {
-    return new Observable<any>(observer => {
-      this.socket.on(Event.TYPING, (data) => observer.next(data));
-    });
+  public onResetTyping(): Observable<any> {
+    return this.onEvent<any>(Event.RESET_TYPING)
   }
 
-  public onUserResetTyping(): Observable<any> {
-    return new Observable<any>(observer => {
-      this.socket.on(Event.RESET_TYPING, (data) => observer.next(data)); 
-    });
-  }
-
-  public onEvent(event: Event): Observable<any> {
-    return new Observable<Event>(observer => {
-      this.socket.on(event, () => observer.next());
+  public onEvent<T>(event: Event): Observable<T> {
+    return new Observable<T>(observer => {
+      this.socket.on(event, (payload) => observer.next(payload));
     });
   }
 }

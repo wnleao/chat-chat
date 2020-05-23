@@ -19,7 +19,6 @@ export class ChatComponent implements OnInit {
   user: User;
   userCount: number;
   messages: Message[] = [];
-  ioConnection: any;
 
   // In socket.io, each socket automatically joins a room identified by its own id.
   // Thus, we'll keep track of the socketIds and store the messages associated with them.
@@ -122,10 +121,10 @@ export class ChatComponent implements OnInit {
   private initIoConnection(): void {
     this.socketService.initSocket();
 
-    this.ioConnection = this.socketService.onMessage()
-      .subscribe((message: Message) => this.handleMessage(message));
+    this.socketService.onMessage()
+      .subscribe(message => this.handleMessage(message));
 
-    this.socketService.onEvent(Event.CONNECT)
+    this.socketService.onConnect()
       .subscribe(() => this.socketService.emitUserJoined(this.user));
 
     this.socketService.onUserJoined()
@@ -152,7 +151,6 @@ export class ChatComponent implements OnInit {
         this.rooms.delete(userLeft.socketId);
       });
 
-
     this.socketService.onUsersOnline()
       .subscribe(usersOnline => {
         this.userCount = Object.keys(usersOnline).length;
@@ -167,7 +165,7 @@ export class ChatComponent implements OnInit {
         }
       });
 
-    this.socketService.onUserTyping()
+    this.socketService.onTyping()
       .subscribe(data => {
         if(data.room === this.currentRoom || data.sender === this.currentRoom) {
           let name = this.usersOnline[data.sender].name;
@@ -175,8 +173,7 @@ export class ChatComponent implements OnInit {
         }
       });
 
-      
-    this.socketService.onUserResetTyping()
+    this.socketService.onResetTyping()
       .subscribe(data => {
         if(data.room === this.currentRoom || data.sender === this.currentRoom) {
           this.statusBarMessageMap.delete(data.sender);
