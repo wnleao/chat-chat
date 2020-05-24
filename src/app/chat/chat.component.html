@@ -26,8 +26,13 @@
     <div #messagesBox (scroll)="onScroll(messagesBox)"
       style="flex: 1; border: 1px solid black; display: flex; flex-direction: column; overflow-y: scroll;">
       <div style="flex: 1;"></div>
-      <div style="flex: 0; padding: 10px;" *ngFor="let message of messages">
-        [{{ message.user.name }}] {{ message.content }}
+      <div style="flex: 0; padding: 10px;" *ngFor="let m of messages | keyvalue : keyValueKeepOriginalOrder">
+        <div>
+          [{{ m.value.user.name }}] {{ m.key }}
+        </div>
+        <div>
+          {{ m.value.content }}
+        </div>
       </div>
     </div>
     <div style="flex: 0; border: 1px solid red; height: 80px;">

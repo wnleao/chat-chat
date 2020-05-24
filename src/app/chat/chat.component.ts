@@ -18,19 +18,21 @@ export class ChatComponent implements OnInit {
   @Input()
   user: User;
   userCount: number;
-  messages: Message[] = [];
-
+  messageCount = 0;
+  
   // In socket.io, each socket automatically joins a room identified by its own id.
   // Thus, we'll keep track of the socketIds and store the messages associated with them.
   // socketId => Message[]
   currentRoom: string;
+  
+  // room_id -> map of messages
   rooms = new Map();
 
   textarea = new FormControl();
 
   isUserTyping = false;
   isScrolledToBottom = true;
-  oldMessagesLength = 0;
+  oldMessagesSize = 0;
 
   statusBarMessageMap = new Map();
 
@@ -42,6 +44,11 @@ export class ChatComponent implements OnInit {
     private socketService: SocketService,
     private router: Router
   ) {
+    this.rooms.clear();
+    this.rooms.set(MAIN_ROOM, new Map());
+    //this.rooms.set(MAIN_ROOM, []);
+    this.enterMainRoom();
+    this.initIoConnection();
   }
 
   ngOnInit(): void {
@@ -49,20 +56,18 @@ export class ChatComponent implements OnInit {
     if (!username) {
       this.router.navigate(['/']);
     }
-
-    this.rooms.clear();
-    this.rooms.set(MAIN_ROOM, []);
-    this.enterMainRoom();
-
     this.user = new User(username);
-    this.initIoConnection();
+  }
+
+  get messages() {
+    return this.rooms.get(this.currentRoom);
   }
 
   ngAfterViewChecked(): void {
-    if (this.messages && this.messages.length - this.oldMessagesLength > 0 && this.isScrolledToBottom) {
+    if (this.messages && this.messages.size - this.oldMessagesSize > 0 && this.isScrolledToBottom) {
       let el = this.messagesBox.nativeElement;
       el.scrollTop = el.scrollHeight - el.clientHeight;
-      this.oldMessagesLength = this.messages.length;
+      this.oldMessagesSize = this.messages.size;
     }
   }
 
@@ -71,7 +76,7 @@ export class ChatComponent implements OnInit {
   onScroll(element) {
     this.isScrolledToBottom = this.checkScrolledToBottom();
     if (this.isScrolledToBottom) {
-      this.oldMessagesLength = this.messages.length;
+      this.oldMessagesSize = this.messages.size;
     }
   }
 
@@ -102,8 +107,7 @@ export class ChatComponent implements OnInit {
 
     console.log(`enter room ${room}`)
     this.currentRoom = room;
-    this.messages = this.rooms.get(this.currentRoom);
-
+    
     this.resetStatusBar();
   }
 
@@ -122,7 +126,26 @@ export class ChatComponent implements OnInit {
     this.socketService.initSocket();
 
     this.socketService.onMessage()
-      .subscribe(message => this.handleMessage(message));
+      .subscribe(message => {
+        // message state 5 - client_received
+        this.handleMessage(message);
+      });
+
+    this.socketService.onMessageRegistered()
+      .subscribe(data => {
+        if(!this.rooms.has(data.room)) {
+          // ignores event
+          return;
+        }
+
+        // Find message using the old_id (id gen in the client)
+        // to store the uuid gen in the server.
+        let messages = this.rooms.get(data.room);
+        let message = messages.get(data.old_id);
+        message.uuid = data.uuid;
+        messages.delete(data.old_id);
+        messages.set(message.uuid, message);
+      });
 
     this.socketService.onConnect()
       .subscribe(() => this.socketService.emitUserJoined(this.user));
@@ -130,6 +153,7 @@ export class ChatComponent implements OnInit {
     this.socketService.onUserJoined()
       .subscribe(userJoined => {
         let m: Message = {
+          uuid: ''+this.messageCount++,
           user: userJoined.user,
           sender: null,
           recipient: null,
@@ -142,6 +166,7 @@ export class ChatComponent implements OnInit {
     this.socketService.onUserLeft()
       .subscribe(userLeft => {
         let m: Message = {
+          uuid: ''+this.messageCount++,
           user: userLeft.user,
           sender: null,
           recipient: null,
@@ -162,7 +187,7 @@ export class ChatComponent implements OnInit {
 
         for (let [socketId, user] of Object.entries(this.usersOnline)) {
           if (!this.rooms.has(socketId)) {
-            this.rooms.set(socketId, []);
+            this.rooms.set(socketId, new Map());
           }
         }
       });
@@ -195,10 +220,10 @@ export class ChatComponent implements OnInit {
 
     if (room === this.currentRoom) {
       this.isScrolledToBottom = this.checkScrolledToBottom();
-      this.oldMessagesLength = this.messages.length;
+      this.oldMessagesSize = this.messages.size;
     }
 
-    messages.push(message);
+    messages.set(message.uuid, message);
   }
 
   onSendMessage() {
@@ -243,6 +268,7 @@ export class ChatComponent implements OnInit {
     }
 
     let message: Message = {
+      uuid: ''+this.messageCount++,
       user: this.user,
       sender: this.socketService.socketId,
       recipient: this.currentRoom,
@@ -250,12 +276,19 @@ export class ChatComponent implements OnInit {
       content: content,
     };
 
-    this.socketService.send(message);
+    // message state 1 - ready_to_send
 
-    // pushing my own message in current room
-    this.messages.push(message);
+    // storing my own message in current room
+    this.messages.set(message.uuid, message);
 
     this.resetTyping();
+
+    this.socketService.send(message);
   }
+
+  public keyValueKeepOriginalOrder() {
+    return 0;
+  }
+
 
 }

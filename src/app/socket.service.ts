@@ -18,6 +18,7 @@ export enum Event {
   USER_LEFT = 'user_left',
   USERS_ONLINE = 'users_online',
   CHANGE_USERNAME = 'change_username',
+  MESSAGE_REGISTERED = 'message_registered',
 }
 
 @Injectable()
@@ -35,6 +36,7 @@ export class SocketService {
 
   public send(message: Message): void {
     this.socket.emit(Event.MESSAGE, message);
+    // message stage 2 - client_sent
   }
 
   public typing(room: string): void {
@@ -65,6 +67,10 @@ export class SocketService {
     return this.onEvent<Message>(Event.MESSAGE);
   }
   
+  public onMessageRegistered(): Observable<any> {
+    return this.onEvent<any>(Event.MESSAGE_REGISTERED);
+  }
+
   public onUserJoined(): Observable<any> {
     return this.onEvent<any>(Event.USER_JOINED);
   }
