@@ -19,6 +19,8 @@ export enum Event {
   USERS_ONLINE = 'users_online',
   CHANGE_USERNAME = 'change_username',
   MESSAGE_REGISTERED = 'message_registered',
+  MESSAGE_DELIVERED = 'message_delivered',
+  MESSAGE_SEEN = 'message_seen',
 }
 
 @Injectable()
@@ -37,6 +39,18 @@ export class SocketService {
   public send(message: Message): void {
     this.socket.emit(Event.MESSAGE, message);
     // message stage 2 - client_sent
+  }
+
+  public messageDelivered(message: Message): void {
+    // TODO: clone message
+    let m = new Message(message.uuid, null, message.recipient, message.sender, message.recipient, null, 'message_delivered');
+    this.socket.emit(Event.MESSAGE_DELIVERED, m);
+  }
+
+  public messageSeen(message: Message) {
+      // TODO: clone message
+    let m = new Message(message.uuid, null, message.recipient, message.sender, message.recipient, null, 'message_seen');
+    this.socket.emit(Event.MESSAGE_SEEN, m);
   }
 
   public typing(room: string): void {
@@ -69,6 +83,14 @@ export class SocketService {
   
   public onMessageRegistered(): Observable<any> {
     return this.onEvent<any>(Event.MESSAGE_REGISTERED);
+  }
+
+  public onMessageDelivered(): Observable<Message> {
+    return this.onEvent<Message>(Event.MESSAGE_DELIVERED);
+  }
+
+  public onMessageSeen(): Observable<Message> {
+    return this.onEvent<Message>(Event.MESSAGE_SEEN);
   }
 
   public onUserJoined(): Observable<any> {

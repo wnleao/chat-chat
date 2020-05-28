@@ -19,14 +19,20 @@ export class ChatComponent implements OnInit {
   user: User;
   userCount: number;
   messageCount = 0;
-  
+
   // In socket.io, each socket automatically joins a room identified by its own id.
   // Thus, we'll keep track of the socketIds and store the messages associated with them.
   // socketId => Message[]
   currentRoom: string;
-  
-  // room_id -> map of messages
-  rooms = new Map();
+
+  // map of room_id -> map of uuid -> message
+  oldMessages = new Map<string, Map<string, Message>>();
+
+  // map of room_id -> array of new messages
+  // All messages that arrive are first pushed into these arrays.
+  // Then, when the user selects a given room_id, the messages' states are
+  // updated and they are archived in the rooms map above.
+  newMessages = new Map<string, Message[]>();
 
   textarea = new FormControl();
 
@@ -44,9 +50,9 @@ export class ChatComponent implements OnInit {
     private socketService: SocketService,
     private router: Router
   ) {
-    this.rooms.clear();
-    this.rooms.set(MAIN_ROOM, new Map());
-    //this.rooms.set(MAIN_ROOM, []);
+    this.newMessages.set(MAIN_ROOM, []);
+    this.oldMessages.set(MAIN_ROOM, new Map());
+
     this.enterMainRoom();
     this.initIoConnection();
   }
@@ -60,7 +66,29 @@ export class ChatComponent implements OnInit {
   }
 
   get messages() {
-    return this.rooms.get(this.currentRoom);
+    // 1. Check whether there are new messages...
+    let newMsgsArray = this.newMessages.get(this.currentRoom);
+    let oldMsgsMap = this.oldMessages.get(this.currentRoom);
+    if (!newMsgsArray) {
+      return oldMsgsMap;
+    }
+
+    // 2. Update messages states and store them in the currentRoom archive.
+    newMsgsArray.forEach(message => {
+      message.state = 'message_seen';
+      oldMsgsMap.set(message.uuid, message);
+    });
+
+    // 3. Notify server that the messages were seen
+    // Currently, only notify server if messages are of a private room.
+    if (this.currentRoom !== MAIN_ROOM) {
+      newMsgsArray.forEach(message => this.socketService.messageSeen(message));
+    }
+
+    // 4. Clean up new messages array
+    newMsgsArray.length = 0;
+
+    return oldMsgsMap;
   }
 
   ngAfterViewChecked(): void {
@@ -107,7 +135,7 @@ export class ChatComponent implements OnInit {
 
     console.log(`enter room ${room}`)
     this.currentRoom = room;
-    
+
     this.resetStatusBar();
   }
 
@@ -128,23 +156,47 @@ export class ChatComponent implements OnInit {
     this.socketService.onMessage()
       .subscribe(message => {
         // message state 5 - client_received
-        this.handleMessage(message);
+        this.handleNewMessage(message);
+        if (message.room != MAIN_ROOM) {
+          this.socketService.messageDelivered(message);
+        }
       });
 
     this.socketService.onMessageRegistered()
       .subscribe(data => {
-        if(!this.rooms.has(data.room)) {
+        if (!this.oldMessages.has(data.room)) {
           // ignores event
           return;
         }
 
         // Find message using the old_id (id gen in the client)
         // to store the uuid gen in the server.
-        let messages = this.rooms.get(data.room);
+        let messages = this.oldMessages.get(data.room);
         let message = messages.get(data.old_id);
         message.uuid = data.uuid;
+        message.state = 'server_received';
         messages.delete(data.old_id);
         messages.set(message.uuid, message);
+      });
+
+    this.socketService.onMessageDelivered()
+      .subscribe(deliveredMsg => {
+        if (!this.oldMessages.has(deliveredMsg.room)) {
+          // ignores event
+          return;
+        }
+        let currentMessage = this.oldMessages.get(deliveredMsg.room).get(deliveredMsg.uuid);
+        currentMessage.state = 'message_delivered';
+      });
+
+    this.socketService.onMessageSeen()
+      .subscribe(seenMsg => {
+        if (!this.oldMessages.has(seenMsg.room)) {
+          // ignores event
+          return;
+        }
+        let currentMessage = this.oldMessages.get(seenMsg.room).get(seenMsg.uuid);
+        currentMessage.state = 'message_seen';
       });
 
     this.socketService.onConnect()
@@ -153,29 +205,31 @@ export class ChatComponent implements OnInit {
     this.socketService.onUserJoined()
       .subscribe(userJoined => {
         let m: Message = {
-          uuid: ''+this.messageCount++,
+          uuid: '' + this.messageCount++,
           user: userJoined.user,
           sender: null,
           recipient: null,
           room: MAIN_ROOM,
           content: "joined the conversation",
+          state: null,
         };
-        this.handleMessage(m);
+        this.handleNewMessage(m);
       });
 
     this.socketService.onUserLeft()
       .subscribe(userLeft => {
         let m: Message = {
-          uuid: ''+this.messageCount++,
+          uuid: '' + this.messageCount++,
           user: userLeft.user,
           sender: null,
           recipient: null,
           room: MAIN_ROOM,
           content: "left the conversation",
+          state: null,
         };
-        this.handleMessage(m);
+        this.handleNewMessage(m);
         // remove room clean up messages
-        this.rooms.delete(userLeft.socketId);
+        this.oldMessages.delete(userLeft.socketId);
       });
 
     this.socketService.onUsersOnline()
@@ -186,8 +240,9 @@ export class ChatComponent implements OnInit {
         this.usersOnline = usersOnline;
 
         for (let [socketId, user] of Object.entries(this.usersOnline)) {
-          if (!this.rooms.has(socketId)) {
-            this.rooms.set(socketId, new Map());
+          if (!this.oldMessages.has(socketId)) {
+            this.oldMessages.set(socketId, new Map());
+            this.newMessages.set(socketId, []);
           }
         }
       });
@@ -208,10 +263,10 @@ export class ChatComponent implements OnInit {
       });
   }
 
-  handleMessage(message: Message) {
+  handleNewMessage(message: Message) {
     let room = message.room;
-    let messages = this.rooms.get(room);
-    if (!messages) {
+    let newMsgsArray = this.newMessages.get(room);
+    if (!newMsgsArray) {
       console.warn("could not handle room = " + room);
       console.warn("ignoring message = ");
       console.log(message);
@@ -223,7 +278,7 @@ export class ChatComponent implements OnInit {
       this.oldMessagesSize = this.messages.size;
     }
 
-    messages.set(message.uuid, message);
+    newMsgsArray.push(message);
   }
 
   onSendMessage() {
@@ -260,7 +315,7 @@ export class ChatComponent implements OnInit {
       return;
     }
 
-    let room = this.currentRoom; 
+    let room = this.currentRoom;
     if (room !== MAIN_ROOM) {
       // this is a private message and should be stored
       // in the sender's own room
@@ -268,12 +323,13 @@ export class ChatComponent implements OnInit {
     }
 
     let message: Message = {
-      uuid: ''+this.messageCount++,
+      uuid: '' + this.messageCount++,
       user: this.user,
       sender: this.socketService.socketId,
       recipient: this.currentRoom,
       room: room,
       content: content,
+      state: 'ready_to_send',
     };
 
     // message state 1 - ready_to_send
@@ -284,6 +340,8 @@ export class ChatComponent implements OnInit {
     this.resetTyping();
 
     this.socketService.send(message);
+
+    message.state = 'sent';
   }
 
   public keyValueKeepOriginalOrder() {
