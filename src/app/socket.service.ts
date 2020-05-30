@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../environments/environment';
 import { User } from './common/user';
+import { MessageState } from './common/message_state';
 
 // Socket.io events
 export enum Event {
@@ -19,8 +20,8 @@ export enum Event {
   USERS_ONLINE = 'users_online',
   CHANGE_USERNAME = 'change_username',
   MESSAGE_REGISTERED = 'message_registered',
-  MESSAGE_DELIVERED = 'message_delivered',
-  MESSAGE_SEEN = 'message_seen',
+  CLIENT_RECEIVED = 'client_received',
+  CLIENT_READ = 'client_read',
 }
 
 @Injectable()
@@ -41,16 +42,12 @@ export class SocketService {
     // message stage 2 - client_sent
   }
 
-  public messageDelivered(message: Message): void {
-    // TODO: clone message
-    let m = new Message(message.uuid, null, message.recipient, message.sender, message.recipient, null, 'message_delivered');
-    this.socket.emit(Event.MESSAGE_DELIVERED, m);
+  public clientReceived(message: Message): void {
+    this.socket.emit(Event.CLIENT_RECEIVED, message);
   }
 
-  public messageSeen(message: Message) {
-      // TODO: clone message
-    let m = new Message(message.uuid, null, message.recipient, message.sender, message.recipient, null, 'message_seen');
-    this.socket.emit(Event.MESSAGE_SEEN, m);
+  public clientRead(message: Message) {
+    this.socket.emit(Event.CLIENT_READ, message);
   }
 
   public typing(room: string): void {
@@ -85,12 +82,12 @@ export class SocketService {
     return this.onEvent<any>(Event.MESSAGE_REGISTERED);
   }
 
-  public onMessageDelivered(): Observable<Message> {
-    return this.onEvent<Message>(Event.MESSAGE_DELIVERED);
+  public onClientReceivedMessage(): Observable<Message> {
+    return this.onEvent<Message>(Event.CLIENT_RECEIVED);
   }
 
-  public onMessageSeen(): Observable<Message> {
-    return this.onEvent<Message>(Event.MESSAGE_SEEN);
+  public onClientReadMessage(): Observable<Message> {
+    return this.onEvent<Message>(Event.CLIENT_READ);
   }
 
   public onUserJoined(): Observable<any> {

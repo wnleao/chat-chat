@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
 
 import { Message } from '../common/message';
+import { MessageState } from '../common/message_state';
 import { User } from '../common/user';
 import { Event, SocketService } from '../socket.service';
 import { FormControl } from '@angular/forms';
@@ -75,14 +76,14 @@ export class ChatComponent implements OnInit {
 
     // 2. Update messages states and store them in the currentRoom archive.
     newMsgsArray.forEach(message => {
-      message.state = 'message_seen';
+      message.state = MessageState.CLIENT_READ;
       oldMsgsMap.set(message.uuid, message);
     });
 
-    // 3. Notify server that the messages were seen
+    // 3. Notify server that the messages were read
     // Currently, only notify server if messages are of a private room.
     if (this.currentRoom !== MAIN_ROOM) {
-      newMsgsArray.forEach(message => this.socketService.messageSeen(message));
+      newMsgsArray.forEach(message => this.socketService.clientRead(message));
     }
 
     // 4. Clean up new messages array
@@ -158,7 +159,7 @@ export class ChatComponent implements OnInit {
         // message state 5 - client_received
         this.handleNewMessage(message);
         if (message.room != MAIN_ROOM) {
-          this.socketService.messageDelivered(message);
+          this.socketService.clientReceived(message);
         }
       });
 
@@ -174,29 +175,29 @@ export class ChatComponent implements OnInit {
         let messages = this.oldMessages.get(data.room);
         let message = messages.get(data.old_id);
         message.uuid = data.uuid;
-        message.state = 'server_received';
+        message.state = MessageState.SERVER_RECEIVED;
         messages.delete(data.old_id);
         messages.set(message.uuid, message);
       });
 
-    this.socketService.onMessageDelivered()
-      .subscribe(deliveredMsg => {
-        if (!this.oldMessages.has(deliveredMsg.room)) {
+    this.socketService.onClientReceivedMessage()
+      .subscribe(message => {
+        if (!this.oldMessages.has(message.room)) {
           // ignores event
           return;
         }
-        let currentMessage = this.oldMessages.get(deliveredMsg.room).get(deliveredMsg.uuid);
-        currentMessage.state = 'message_delivered';
+        let currentMessage = this.oldMessages.get(message.room).get(message.uuid);
+        currentMessage.state = MessageState.CLIENT_RECEIVED;
       });
 
-    this.socketService.onMessageSeen()
-      .subscribe(seenMsg => {
-        if (!this.oldMessages.has(seenMsg.room)) {
+    this.socketService.onClientReadMessage()
+      .subscribe(oldMsg => {
+        if (!this.oldMessages.has(oldMsg.room)) {
           // ignores event
           return;
         }
-        let currentMessage = this.oldMessages.get(seenMsg.room).get(seenMsg.uuid);
-        currentMessage.state = 'message_seen';
+        let currentMessage = this.oldMessages.get(oldMsg.room).get(oldMsg.uuid);
+        currentMessage.state = MessageState.CLIENT_READ;
       });
 
     this.socketService.onConnect()
@@ -329,7 +330,7 @@ export class ChatComponent implements OnInit {
       recipient: this.currentRoom,
       room: room,
       content: content,
-      state: 'ready_to_send',
+      state: MessageState.READY_TO_SEND,
     };
 
     // message state 1 - ready_to_send
@@ -341,7 +342,7 @@ export class ChatComponent implements OnInit {
 
     this.socketService.send(message);
 
-    message.state = 'sent';
+    message.state = MessageState.CLIENT_SENT;
   }
 
   public keyValueKeepOriginalOrder() {
