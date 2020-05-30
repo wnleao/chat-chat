@@ -34,3 +34,9 @@ Error: "*.ts is missing from the TypeScript compilation. Please make sure it is 
 
 https://github.com/angular/angular-cli/issues/9807
 
+### Beware the "Expression has changed after it was checked" error!
+
+You should redesign your view and how you're accessing your model.
+
+https://hackernoon.com/everything-you-need-to-know-about-the-expressionchangedafterithasbeencheckederror-error-e3fd9ce7dbb4
+
