@@ -1,0 +1,12 @@
+<div class="message-box">
+  <div #textBox class="text-box" 
+    contenteditable="true" 
+    (keyup)="onTyping()"
+    (keydown.enter)="$event.preventDefault(); onSend()">
+  </div>
+  <div class="actions-box">
+    <button type="button" 
+      [class]="isUserTyping ? 'btn btn-sm btn-success' : 'btn btn-sm btn-outline-success'"
+      (click)="onSend()">Send</button>
+  </div>
+</div>

@@ -35,9 +35,6 @@ export class ChatComponent implements OnInit {
   // updated and they are archived in the rooms map above.
   newMessages = new Map<string, Message[]>();
 
-  textarea = new FormControl();
-
-  isUserTyping = false;
   isScrolledToBottom = true;
   oldMessagesSize = 0;
 
@@ -282,33 +279,8 @@ export class ChatComponent implements OnInit {
     newMsgsArray.push(message);
   }
 
-  onSendMessage() {
-    this.sendMessage(this.textarea.value);
-    this.textarea.setValue("");
-  }
-
-  typing() {
-    console.log("typing!");
-    this.socketService.typing(this.currentRoom);
-    this.isUserTyping = true;
-  }
-
-  resetTyping() {
-    console.log("not typing anymore...");
-    this.socketService.resetTyping(this.currentRoom);
-    this.isUserTyping = false;
-  }
-
-  onTyping() {
-    let content = this.textarea.value;
-
-    if (content && content.trim() !== "" && !this.isUserTyping) {
-      this.typing();
-    }
-
-    if ((!content || content.trim() === "") && this.isUserTyping) {
-      this.resetTyping();
-    }
+  onSendMessage(message) {
+    this.sendMessage(message);
   }
 
   public sendMessage(content: string): void {
@@ -337,8 +309,6 @@ export class ChatComponent implements OnInit {
 
     // storing my own message in current room
     this.messages.set(message.uuid, message);
-
-    this.resetTyping();
 
     this.socketService.send(message);
 

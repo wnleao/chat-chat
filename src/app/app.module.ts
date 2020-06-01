@@ -10,6 +10,7 @@ import { LoginComponent } from './login/login.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AutofocusDirective } from './shared/autofocus.directive';
 import { SmartUsernameComponent } from './smart-username/smart-username.component';
+import { MessageBoxComponent } from './message-box/message-box.component';
 
 @NgModule({
   declarations: [
@@ -18,6 +19,7 @@ import { SmartUsernameComponent } from './smart-username/smart-username.componen
     LoginComponent,
     AutofocusDirective,
     SmartUsernameComponent,
+    MessageBoxComponent,
   ],
   imports: [
     BrowserModule,
