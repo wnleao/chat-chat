@@ -9,6 +9,8 @@
   box-sizing: border-box;
   overflow-wrap: break-word;
   white-space: pre-wrap;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .actions-box {
